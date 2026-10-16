@@ -1,0 +1,549 @@
+# Master Prompt: T25 — Improved Cellular Automaton Model for Mumbai Traffic
+
+Act as a Python developer and simulation-modelling researcher. Build a complete, simple, functional traffic simulation with a FastAPI web interface and a research report in Markdown.
+
+Do not merely reproduce the benchmark paper. The project must implement the original model as a baseline, develop a meaningful extension for Mumbai mixed traffic, and evaluate whether the extension improves the representation of urban traffic behaviour.
+
+Prioritise simplicity, correctness, explainability, and reproducible results. Avoid unnecessary features and complex architecture.
+
+# 1. Project Details
+
+- **Topic ID:** T25
+- **Title:** Cellular-Automaton Traffic Simulation of a Congested Mumbai Arterial Road
+- **Model:** Simulation and Stochastic Modelling
+- **Research question:** How do lane discipline, random slowdowns and signal timing affect flow and travel time on a congested road, and can the model reproduce the observed fundamental diagram?
+- **Benchmark paper:** K. Nagel and M. Schreckenberg, “A cellular automaton model for freeway traffic,” Journal de Physique I, vol. 2, no. 12, pp. 2221–2229, 1992.
+- **Research contribution:** Extend the original Nagel–Schreckenberg (NaSch) model to represent heterogeneous Indian traffic, particularly cars, two-wheelers, lane discipline and traffic signals.
+
+## 2. Main Deliverables
+
+Create:
+
+1. A working implementation of the original NaSch model.
+2. An improved Mumbai-specific traffic model.
+3. A FastAPI backend and simple web interface.
+4. Numerical experiments comparing both models.
+5. Fundamental diagrams, results tables and other relevant graphs.
+6. A numerical stability and sensitivity analysis.
+7. A complete `REPORT.md` documenting the model, equations, parameters, assumptions, experiments, results, limitations and conclusions.
+8. A `README.md` containing installation and execution instructions.
+
+The project must be runnable locally on Windows.
+
+# STAGE 1 — Project Setup
+
+Use this project structure:
+
+```text
+T25-Traffic-Simulation/
+├── main.py
+├── simulation.py
+├── experiments.py
+├── requirements.txt
+├── README.md
+├── REPORT.md
+├── templates/
+│   └── index.html
+└── static/
+    ├── style.css
+    └── app.js
+```
+
+Use:
+- Python for modelling and calculations.
+- FastAPI for HTTP endpoints.
+- Jinja2 for serving the interface.
+- NumPy for numerical operations.
+- Matplotlib for plots.
+- Pandas only if useful for result tables.
+- Plain HTML, CSS and JavaScript for the frontend.
+
+Keep dependencies minimal. Do not use React, Streamlit, a database, Docker or machine learning.
+
+Implement and test each stage before proceeding to the next. Do not stop after writing a plan or displaying code snippets; create the working files in the project workspace.
+
+# STAGE 2 — Reproduce the Original NaSch Model
+
+Implement the original single-lane Nagel–Schreckenberg model first, without Mumbai-specific extensions.
+
+Represent the road as discrete cells. Each cell is either empty or occupied by a vehicle. Each vehicle has an integer velocity from zero to a configurable maximum.
+
+Apply these four rules in the correct order:
+
+1. **Acceleration:** If velocity is below the maximum, increase it by one.
+2. **Braking:** If the gap ahead is insufficient, reduce velocity to avoid collision.
+3. **Randomisation:** With probability `p`, reduce a positive velocity by one.
+4. **Movement:** Move every vehicle forward by its updated velocity.
+
+Use synchronous updates. Calculate all new velocities before moving any vehicle.
+
+Use a circular road for the baseline fundamental-diagram experiment. Vehicles that cross the end re-enter at the beginning.
+
+Use a fixed random seed so that experiments can be reproduced.
+
+Requirements:
+- Test all four update rules.
+- Verify that vehicles do not overlap.
+- Calculate density, mean speed and flow.
+- Include a warm-up period before measuring steady-state behaviour.
+- Generate the baseline flow-versus-density graph.
+
+Document any implementation details that differ from the benchmark paper.
+
+**Do not modify the original model to make it resemble Mumbai.** Keep it as an independent baseline for comparison.
+
+# STAGE 3 — Develop the Improved Mumbai Model
+
+Create a separate extended model that reuses the validated baseline logic wherever appropriate.
+
+The extended model must include three additions.
+
+## Extension A: Heterogeneous vehicles
+
+Represent:
+- Cars
+- Two-wheelers
+
+Give each vehicle type configurable parameters, including maximum speed and random slowdown probability.
+
+For the initial implementation, both types may occupy one cell. Explain that this is a computational simplification and does not mean the physical vehicles have equal dimensions.
+
+Keep total road occupancy and the proportion of each vehicle type configurable.
+
+Investigate whether changing the two-wheeler share affects flow, speed, travel time and congestion.
+
+Do not assume in advance that a higher two-wheeler share necessarily improves traffic flow.
+
+## Extension B: Lane discipline and safe lane changing
+
+Extend the model to two lanes.
+
+Introduce a lane-discipline parameter that influences how frequently a vehicle attempts a lane change when another lane offers an advantage.
+
+Support three settings:
+- Strong lane discipline
+- Moderate lane discipline
+- Weak lane discipline
+
+Implement safe lane-changing rules:
+- The target cell must be free.
+- The target lane must have sufficient space ahead.
+- The manoeuvre must not cause an immediate collision with a vehicle behind.
+- Lane changes must be performed consistently so that two vehicles cannot claim the same cell.
+
+If vehicle types use different lane-changing thresholds or gap preferences, document these explicitly as modelling assumptions.
+
+Start with simple rules. Do not attempt to reproduce every detail of real Indian driving behaviour.
+
+## Extension C: Signal-controlled traffic
+
+Add one signalised stop line on the road.
+
+Implement:
+- Configurable green duration
+- Configurable red duration
+- Signal cycle
+- A stop-line constraint
+- Queue formation and dissipation
+
+Vehicles must stop before the red signal and must never cross the stop line while the signal is red.
+
+Use a simple, documented signal phase convention.
+
+For the signalised model, use an open-road or finite-road configuration where vehicles enter and exit the simulated segment. This is more suitable for measuring completed trips and travel time than a circular road.
+
+Use a consistent entry rule and record vehicles that enter, exit or remain in the road at the end of a run.
+
+Keep the circular baseline and the signalised model separate where their boundary conditions differ.
+
+# STAGE 4 — Model Architecture and Comparison
+
+Provide a model selector in the application:
+
+1. **Original NaSch**
+2. **Extended Mumbai Model**
+
+The original model must use its four standard rules. The extended model must add heterogeneous vehicles, lane discipline and signal control.
+
+Clearly document which components are shared and which are new.
+
+Create a comparison table in the report:
+
+| Feature | Original NaSch | Extended Mumbai Model |
+|---|---|---|
+| Single-lane cellular automaton | Yes | Core logic adapted |
+| Stochastic slowing | Yes | Yes |
+| Different vehicle types | No | Yes |
+| Lane changing | No | Yes |
+| Lane discipline | No | Yes |
+| Signal control | No | Yes |
+| Urban queue analysis | Limited | Yes |
+| Fundamental diagram | Yes | Yes, with suitable measurement method |
+
+Explain that adding features does not automatically make a model more accurate. Accuracy must be evaluated against observations where data are available.
+
+# STAGE 5 — Parameters, Assumptions and Outputs
+
+Keep all parameters in a clearly documented configuration section.
+
+Include at least:
+
+| Parameter | Meaning |
+|---|---|
+| `road_length` | Number of cells |
+| `density` | Fraction of occupied road cells |
+| `max_speed_car` | Maximum car speed |
+| `max_speed_two_wheeler` | Maximum two-wheeler speed |
+| `slowdown_car` | Car random slowdown probability |
+| `slowdown_two_wheeler` | Two-wheeler random slowdown probability |
+| `two_wheeler_share` | Proportion of two-wheelers |
+| `lane_discipline` | Controls lane-changing tendency |
+| `green_time` | Green duration in time steps |
+| `red_time` | Red duration in time steps |
+| `simulation_steps` | Number of simulation steps |
+| `warmup_steps` | Steps excluded from steady-state measurement |
+| `random_seed` | Random number generator seed |
+
+Add any extra parameters required for safe lane changing, vehicle entry rates or signal position.
+
+For every parameter, explain:
+- Its meaning.
+- Its unit or scale.
+- Its allowed range.
+- Its expected influence.
+- Whether it comes from the benchmark paper, an empirical observation or an illustrative assumption.
+
+Do not present arbitrary starting values as measured Mumbai traffic data.
+
+Record the following outputs where applicable:
+- Mean flow
+- Mean vehicle speed
+- Mean travel time
+- Mean queue length
+- Maximum queue length
+- Number of completed trips
+- Throughput
+- Vehicle count and density
+
+Define all metrics mathematically and explain their units.
+
+For example, distinguish between flow measured in vehicles per time step and physical flow measured in vehicles per hour. Convert units only when the time-step calibration supports it.
+
+# STAGE 6 — FastAPI Web Interface
+
+Build a basic, responsive UI with:
+- White background
+- Dark grey text
+- Black headings
+- Orange accents
+
+Keep the interface simple and readable.
+
+## A. Simulation controls
+
+Provide:
+- Model selector
+- Road length
+- Traffic density
+- Random slowdown probability
+- Two-wheeler share
+- Lane-discipline setting
+- Green duration
+- Red duration
+- Simulation duration
+- Random seed
+
+Show only the relevant controls for the selected model.
+
+## B. Traffic visualisation
+
+Display:
+- Road cells
+- Cars and two-wheelers in different colours
+- Both lanes in the extended model
+- Signal state
+- Simulation step
+- A simple animation or step-by-step playback
+
+Do not let animation interfere with simulation correctness.
+
+## C. Results
+
+Show the calculated output metrics and the experiment results.
+
+## D. Graphs
+
+Include:
+- Original NaSch fundamental diagram
+- Extended model fundamental diagram
+- Flow comparison between models
+- Travel-time comparison
+- Effects of random slowdown probability
+- Effects of lane discipline
+- Effects of signal timing
+- Effects of two-wheeler share
+- Stability or disturbance-propagation plot
+
+Generate graphs from actual simulation outputs. Do not use hardcoded example charts.
+
+The frontend must call the Python simulation through FastAPI endpoints. Validate all incoming parameters and return useful error messages for invalid inputs.
+
+# STAGE 7 — Numerical Experiments
+
+Run all experiments systematically. Change one main factor at a time while keeping other parameters fixed, unless the experiment explicitly investigates combined effects.
+
+Use multiple random seeds for stochastic comparisons. Report averages and variability.
+
+## Experiment 1: Baseline fundamental diagram
+
+For the original NaSch model:
+- Vary density from low to high.
+- Measure steady-state flow at each density.
+- Plot flow against density.
+- Explain free-flow and congested regimes.
+- Identify the observed peak-flow region in the simulation.
+
+Compare the qualitative shape with the benchmark paper. Do not assume that the exact density of the transition in the paper must occur with different parameter choices or road configurations.
+
+## Experiment 2: Extended fundamental diagram
+
+Generate the corresponding graph for the extended model.
+
+State how flow is measured, particularly for an open road with a signal.
+
+Discuss how mixed traffic, lane changing and signal interruptions alter the curve.
+
+For an open-road system, report both throughput and density using a clearly defined measurement region. Do not treat the open-road and circular-road measurements as identical without explanation.
+
+## Experiment 3: Random slowdowns
+
+Compare low, medium and high random slowdown probabilities.
+
+Measure flow, speed, travel time and queue formation.
+
+## Experiment 4: Lane discipline
+
+Compare strong, moderate and weak lane discipline in the two-lane model.
+
+Measure flow, travel time and queue length.
+
+Discuss whether more lane changing consistently helps, or whether the outcome depends on density and vehicle composition.
+
+## Experiment 5: Signal timing
+
+Compare at least three green/red splits while keeping total cycle length fixed.
+
+Measure throughput, average travel time, average queue length and maximum queue length.
+
+Explain the trade-offs between green allocation, red-phase waiting and queue clearance.
+
+## Experiment 6: Mixed traffic
+
+Vary the proportion of two-wheelers while keeping total occupancy or the specified traffic demand controlled.
+
+Explain which quantities remain fixed and why.
+
+Measure the changes in flow, speed, travel time and queue length.
+
+## Experiment 7: Combined scenario
+
+Compare:
+- Original NaSch baseline
+- Extended model with neutral or moderate settings
+- Extended model under a more congested scenario
+
+Change several factors together only in this final experiment.
+
+Explain which differences can be attributed to individual extensions and which are combined effects.
+
+For every experiment, include:
+1. Objective
+2. Independent variable
+3. Controlled variables
+4. Method
+5. Results table
+6. Graph
+7. Interpretation
+8. Limitations
+
+# STAGE 8 — Stability and Sensitivity Analysis
+
+Conduct a numerical stability analysis, not an unsupported claim of mathematical proof.
+
+## A. Disturbance propagation
+
+Create an initially moving traffic stream. Introduce a small disturbance, such as one vehicle slowing down.
+
+Track vehicle speeds, gaps or queue length over time.
+
+Repeat at different densities and random slowdown probabilities.
+
+Classify the outcome as:
+- Disturbance dissipates
+- Disturbance remains limited
+- Disturbance grows into a traffic jam
+
+Repeat this test for the original and extended models where a meaningful comparison is possible.
+
+## B. Parameter sensitivity
+
+Vary one parameter at a time, such as slowdown probability, two-wheeler share or green-time proportion.
+
+Measure the resulting percentage change in mean flow and travel time.
+
+Show results in tables and graphs.
+
+## C. Stochastic repeatability
+
+Run identical configurations with multiple random seeds.
+
+Report the mean and standard deviation of the outputs.
+
+Explain:
+- Computational correctness
+- Stochastic variability
+- Physical traffic stability
+
+Do not call a model physically stable simply because the code runs without errors.
+
+# STAGE 9 — Validation and Calibration
+
+Use real data only when it is actually available.
+
+Potential sources:
+- Google Maps travel-time observations
+- Manual vehicle counts
+- Published Mumbai traffic studies
+
+Create a template for manually recording:
+- Observation date and time
+- Road segment
+- Vehicle counts by type
+- Observation duration
+- Signal timing, if known
+- Observed travel time
+- Data source
+
+Compare observed counts with simulated flow and observed travel times with simulated travel times where compatible data are available.
+
+If real data are unavailable:
+- Label synthetic inputs as illustrative.
+- Compare the baseline qualitatively with the benchmark paper.
+- Explain why this is not quantitative validation of Mumbai traffic.
+- Identify the additional data required for calibration.
+
+Calculate MAE or RMSE only when actual paired observations and predictions are available.
+
+# STAGE 10 — Research Report: REPORT.md
+
+Generate a complete Markdown report with the following sections:
+
+1. Title and project details
+2. Abstract
+3. Introduction
+4. Problem statement
+5. Research question and objectives
+6. Literature review
+7. Benchmark paper summary
+8. Limitations of the original NaSch model for Mumbai traffic
+9. Research gap and proposed improvement
+10. Original model methodology
+11. Extended model methodology
+12. Mathematical equations and update rules
+13. Parameter discussion
+14. Assumptions and simplifications
+15. Software architecture
+16. Experimental design
+17. Experiment 1: Baseline fundamental diagram
+18. Experiment 2: Extended fundamental diagram
+19. Experiment 3: Random slowdowns
+20. Experiment 4: Lane discipline
+21. Experiment 5: Signal timing
+22. Experiment 6: Mixed traffic
+23. Experiment 7: Combined scenario
+24. Stability analysis
+25. Sensitivity and repeatability analysis
+26. Validation and calibration
+27. Results and comparison with the original model
+28. Discussion of the proposed improvement
+29. Limitations
+30. Conclusion
+31. Future scope
+32. References
+33. Appendix: Installation and execution
+
+The report must explicitly answer:
+
+- What problem did the original paper address?
+- How does the original model work?
+- Why is it insufficient for this case study?
+- What exactly has been changed?
+- Why were these changes introduced?
+- How does each change affect the model's behaviour?
+- Does the extended model produce a plausible fundamental diagram?
+- What happens to flow and travel time when the parameters change?
+- Does a small disturbance grow or disappear?
+- What evidence supports the results?
+- What cannot be concluded from the available data?
+
+Include:
+- Equations
+- Parameter tables
+- Assumption tables
+- Experimental setup tables
+- Actual results tables
+- Generated graphs
+- A direct comparison of the original and extended models
+
+Clearly distinguish findings from the benchmark paper, results produced by the simulation, and hypotheses about real Mumbai traffic.
+
+Never invent results, references, datasets or validation claims. If a run has not been completed, mark its results as pending rather than fabricating values.
+
+Use the benchmark paper's correct bibliographic details. Add other references only when they can be verified.
+
+# STAGE 11 — Testing and Completion
+
+Before completion:
+
+1. Verify the four original NaSch rules.
+2. Check that vehicles do not overlap.
+3. Check that lane changes obey the safety rules.
+4. Check that vehicles cannot cross a red signal.
+5. Test parameter validation.
+6. Run every experiment.
+7. Generate the graphs and result tables from actual outputs.
+8. Test the FastAPI endpoints and web interface.
+9. Confirm that report values match the generated results.
+10. Fix errors and document remaining limitations.
+
+Create `README.md` with:
+- Project overview
+- Requirements and installation
+- Windows setup commands
+- Run command
+- Browser URL
+- Explanation of model modes and controls
+- Description of the experiments
+- Location of `REPORT.md`
+
+## Final Development Order
+
+**Stage A:** Original NaSch model and tests.
+
+**Stage B:** Heterogeneous cars and two-wheelers.
+
+**Stage C:** Two-lane model and lane discipline.
+
+**Stage D:** Traffic signal and open-road queues.
+
+**Stage E:** Numerical experiments, stability analysis and baseline-versus-extension comparisons.
+
+**Stage F:** FastAPI UI and graphs.
+
+**Stage G:** Run the experiments and complete the report with actual results.
+
+At each stage, list files changed, test the implementation and fix errors before moving on.
+
+Keep the model simple enough for a student to understand and explain in a presentation. If an extension becomes unreliable, preserve the working baseline, simplify the extension and document the limitation.
+
+The final project must demonstrate a clear research contribution: **an extended NaSch model designed for Mumbai-like mixed traffic, with systematic numerical comparisons against the original model.**

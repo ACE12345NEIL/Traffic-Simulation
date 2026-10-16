@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>T25: Cellular-Automaton Traffic Simulation of a Congested Mumbai Arterial Road</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+  <header>
+    <div class="header-container">
+      <div class="brand">
+        <h1>T25 — <span>Mumbai Traffic</span> Cellular Automaton</h1>
+        <p class="subtitle">Stochastic Simulation of Congested Arterials vs. Nagel–Schreckenberg (1992) Baseline</p>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- Navigation Tabs -->
+    <div class="tabs">
+      <button class="tab-btn active" id="tab-btn-sim" onclick="switchTab('sim-tab')">Live Simulation & Visualiser</button>
+      <button class="tab-btn" id="tab-btn-exp" onclick="switchTab('experiments-tab')">Numerical Experiments (1–7) & Plots</button>
+      <button class="tab-btn" id="tab-btn-stab" onclick="switchTab('stability-tab')">Stability & Disturbance Analysis</button>
+      <button class="tab-btn" id="tab-btn-comp" onclick="switchTab('comparison-tab')">Model Comparison & Theory</button>
+    </div>
+
+    <!-- TAB 1: LIVE SIMULATION -->
+    <section id="sim-tab" class="tab-content active">
+      <div class="dashboard-grid">
+        <!-- Controls Column -->
+        <aside class="card">
+          <h2>Simulation Parameters</h2>
+          
+          <div class="form-group">
+            <label for="model_type">Model Architecture:</label>
+            <select id="model_type" onchange="onModelChange()">
+              <option value="mumbai" selected>Extended Mumbai Arterial Model</option>
+              <option value="nasch">Original NaSch (1992) Baseline</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="density">Traffic Density (ρ): <span id="val_density" class="val-display">0.25</span></label>
+            <input type="range" id="density" min="0.02" max="0.90" step="0.02" value="0.25" oninput="updateVal('density')">
+          </div>
+
+          <div class="form-group">
+            <label for="road_length">Road Length (cells): <span id="val_road_length" class="val-display">200</span></label>
+            <input type="range" id="road_length" min="50" max="400" step="10" value="200" oninput="updateVal('road_length')">
+          </div>
+
+          <!-- Extended Model Specific Controls -->
+          <div id="extended_controls">
+            <div class="form-group">
+              <label for="two_wheeler_share">Two-Wheeler Proportion (α): <span id="val_two_wheeler_share" class="val-display">0.40</span></label>
+              <input type="range" id="two_wheeler_share" min="0.0" max="1.0" step="0.05" value="0.40" oninput="updateVal('two_wheeler_share')">
+            </div>
+
+            <div class="form-group">
+              <label for="lane_discipline">Lane Discipline:</label>
+              <select id="lane_discipline">
+                <option value="strong">Strong (Strict Lane Keeping)</option>
+                <option value="moderate" selected>Moderate (Standard Gap Weaving)</option>
+                <option value="weak">Weak (Aggressive Filtering / Swerving)</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="signal_position">Signal Stop Line Position: <span id="val_signal_position" class="val-display">150</span></label>
+              <input type="range" id="signal_position" min="30" max="380" step="5" value="150" oninput="updateVal('signal_position')">
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+              <div class="form-group">
+                <label for="green_time">Green (steps): <span id="val_green_time" class="val-display">30</span></label>
+                <input type="number" id="green_time" min="5" max="120" value="30" oninput="updateVal('green_time')">
+              </div>
+              <div class="form-group">
+                <label for="red_time">Red (steps): <span id="val_red_time" class="val-display">30</span></label>
+                <input type="number" id="red_time" min="5" max="120" value="30" oninput="updateVal('red_time')">
+              </div>
+            </div>
+          </div>
+
+          <!-- Baseline Specific Control -->
+          <div id="baseline_controls" style="display: none;">
+            <div class="form-group">
+              <label for="slowdown_prob">Slowdown Prob (p): <span id="val_slowdown_prob" class="val-display">0.30</span></label>
+              <input type="range" id="slowdown_prob" min="0.0" max="1.0" step="0.05" value="0.30" oninput="updateVal('slowdown_prob')">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="random_seed">Random Seed:</label>
+            <input type="number" id="random_seed" value="42">
+          </div>
+
+          <div class="btn-group">
+            <button class="btn btn-primary" onclick="initSimulation()" style="flex: 1;">Initialize Track</button>
+            <button class="btn btn-secondary" onclick="runBatchSimulation()" style="flex: 1;">Run Full Batch</button>
+          </div>
+        </aside>
+
+        <!-- Visualization & Metrics Column -->
+        <div>
+          <!-- Visualiser Card -->
+          <div class="vis-container">
+            <div class="vis-header">
+              <h3>Live Road Automaton <span id="step_indicator" style="font-size: 0.85rem; font-weight: normal; color: var(--text-secondary); margin-left: 0.5rem;">Step: 0</span></h3>
+              <div class="playback-controls">
+                <button class="btn btn-primary" id="play_btn" onclick="togglePlay()">Play</button>
+                <button class="btn btn-secondary" onclick="stepSimulation()">Step</button>
+                <button class="btn btn-secondary" onclick="resetSimulation()">Reset</button>
+                <div class="speed-control">
+                  <span>Speed:</span>
+                  <input type="range" id="play_speed" min="50" max="500" step="25" value="150" style="width: 80px;" oninput="onSpeedChange()">
+                </div>
+              </div>
+            </div>
+
+            <div class="road-view-wrapper" id="road_scroll_box">
+              <div class="road-lane-container" id="road_container">
+                <!-- Lanes dynamically rendered here -->
+              </div>
+            </div>
+
+            <div class="legend">
+              <div class="legend-item">
+                <div class="legend-box" style="background-color: var(--car-color);"></div>
+                <span>Car (Dark Navy)</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-box" style="background-color: var(--tw-color);"></div>
+                <span>Two-Wheeler (Orange)</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-box" style="background-color: var(--signal-green);"></div>
+                <span>Signal Green</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-box" style="background-color: var(--signal-red);"></div>
+                <span>Signal Red</span>
+              </div>
+              <div class="legend-item" style="margin-left: auto;">
+                <span id="signal_status_badge" style="font-weight: 600;">Signal: GREEN</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Metrics Output -->
+          <div class="card">
+            <h3>Calculated Steady-State Metrics</h3>
+            <div class="metrics-grid">
+              <div class="metric-card">
+                <div class="metric-label">Mean Flow (J)</div>
+                <div class="metric-value" id="metric_flow">--</div>
+                <div class="metric-unit">veh / cell / step</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Mean Speed (v)</div>
+                <div class="metric-value" id="metric_speed">--</div>
+                <div class="metric-unit">cells / step (~18 km/h per cell)</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Mean Travel Time</div>
+                <div class="metric-value" id="metric_travel_time">--</div>
+                <div class="metric-unit">seconds (steps)</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Mean Queue Length</div>
+                <div class="metric-value" id="metric_queue">--</div>
+                <div class="metric-unit">cells upstream of signal</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Max Queue Length</div>
+                <div class="metric-value" id="metric_max_queue">--</div>
+                <div class="metric-unit">cells (stop-line peak)</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Completed Trips</div>
+                <div class="metric-value" id="metric_trips">--</div>
+                <div class="metric-unit">vehicles exited arterial</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: NUMERICAL EXPERIMENTS -->
+    <section id="experiments-tab" class="tab-content">
+      <div class="info-banner">
+        <strong>Experimental Suite:</strong> Systematic numerical experiments comparing the baseline NaSch model with the Mumbai extended model across 7 distinct experiments, with multi-seed averaging and standard error estimation.
+      </div>
+
+      <div style="margin-bottom: 1rem; display: flex; justify-content: flex-end;">
+        <button class="btn btn-secondary" onclick="reloadExperimentPlots()">Refresh Generated Plots</button>
+      </div>
+
+      <div class="plots-grid" id="plots_container">
+        <!-- Plot cards loaded dynamically via API -->
+      </div>
+    </section>
+
+    <!-- TAB 3: STABILITY & SENSITIVITY -->
+    <section id="stability-tab" class="tab-content">
+      <div class="card">
+        <h2>Disturbance Propagation & Shockwave Analysis</h2>
+        <p style="margin-bottom: 1rem; color: var(--text-secondary);">
+          A numerical stability analysis investigating whether a localized vehicle slowdown dissipates, remains bounded, or forms an upstream-propagating phantom traffic jam (backward shockwave).
+        </p>
+        <div style="text-align: center; margin: 1.5rem 0;">
+          <img src="/static/generated/disturbance_propagation.png" alt="Disturbance Propagation" style="max-width: 100%; height: auto; border: 1px solid var(--border-color); border-radius: 6px;">
+        </div>
+        <div style="background: #fdfdfd; padding: 1rem; border: 1px solid var(--border-color); border-radius: 6px;">
+          <h4 style="margin-bottom: 0.5rem; color: var(--heading-color);">Key Finding:</h4>
+          <p style="font-size: 0.9rem; color: var(--text-secondary);">
+            At densities below critical density (ρ &lt; 0.15), minor perturbations dissipate within 5–10 steps as downstream headway allows vehicles to accelerate. Near and above capacity (ρ ≥ 0.25), a momentary slowdown cannot be absorbed, propagating backward at characteristic speed w ≈ -15 to -18 km/h (-1 cell/step), confirming classical Lighthill-Whitham-Richards (LWR) shockwave dynamics reproduced in the cellular automaton.
+          </p>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top: 1.5rem;">
+        <h2>Sensitivity & Stochastic Repeatability</h2>
+        <div id="sensitivity_content">
+          <p>Loading sensitivity data...</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: COMPARISON & THEORY -->
+    <section id="comparison-tab" class="tab-content">
+      <div class="card">
+        <h2>Model Architecture & Methodology Comparison</h2>
+        <p style="margin-bottom: 1rem; color: var(--text-secondary);">
+          Direct comparison between the benchmark Nagel–Schreckenberg (1992) model and the improved Mumbai arterial model.
+        </p>
+
+        <div class="comparison-table-wrapper">
+          <table class="comp-table">
+            <thead>
+              <tr>
+                <th>Feature</th>
+                <th>Original NaSch (1992)</th>
+                <th>Extended Mumbai Model</th>
+                <th>Modelling Rationale</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Lattice Topology</strong></td>
+                <td>Single-lane circular ring</td>
+                <td>Two-lane open arterial (or circular)</td>
+                <td>Represents multi-lane urban arterial corridors with inflow and outflow.</td>
+              </tr>
+              <tr>
+                <td><strong>Vehicle Classes</strong></td>
+                <td>Homogeneous (identical cars)</td>
+                <td>Heterogeneous (Cars &amp; Two-Wheelers)</td>
+                <td>Two-wheelers constitute over 40–60% of Mumbai's vehicular composition.</td>
+              </tr>
+              <tr>
+                <td><strong>Speed &amp; Acceleration</strong></td>
+                <td>v_max = 5, uniform accel (+1)</td>
+                <td>Configurable per vehicle type</td>
+                <td>Two-wheelers accelerate quickly and have lower dawdling probabilities in dense traffic.</td>
+              </tr>
+              <tr>
+                <td><strong>Lane Discipline</strong></td>
+                <td>None (single lane)</td>
+                <td>Strong, Moderate, or Weak</td>
+                <td>Quantifies lane adherence vs. opportunistic lane-filtering and swerving.</td>
+              </tr>
+              <tr>
+                <td><strong>Traffic Signals</strong></td>
+                <td>None (uninterrupted flow)</td>
+                <td>Stop-line with Green/Red cycles</td>
+                <td>Accounts for signalized arterial bottlenecks and cyclic queue formation.</td>
+              </tr>
+              <tr>
+                <td><strong>Queue Dynamics</strong></td>
+                <td>Phantom jams only</td>
+                <td>Signal queues + backward shockwaves</td>
+                <td>Enables measurement of maximum queue spillback and cycle clearance delay.</td>
+              </tr>
+              <tr>
+                <td><strong>Boundary Conditions</strong></td>
+                <td>Periodic (circular)</td>
+                <td>Finite open road with demand inflow</td>
+                <td>Enables realistic trip travel-time and throughput measurement.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>T25 Cellular-Automaton Traffic Simulation of a Congested Mumbai Arterial Road | Academic Research Report &amp; Simulator</p>
+  </footer>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
